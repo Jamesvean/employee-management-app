@@ -29,13 +29,96 @@ jobs:
       - name: Health Check
         run: curl -f http://localhost:5000/health
 
-      - name: Login to Docker Hub
+            - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Tag Docker Image
+        run: |
+          docker tag \
+            employee-management-app:latest \
+            jamesaws/employee-management-app:latest
+
+      - name: Push Docker Image
+        run: |
+          docker push jamesaws/employee-management-app:latest
+
+Save:
+
+Ctrl + O
+Enter
+Ctrl + X
+
+Now verify:
+
+tail -30 .github/workflows/deploy.yml
+
+You should see:
+
+Login to Docker Hub
+Tag Docker Image
+Push Docker Image
+Important: don't run docker push manually yet
+
+We're building a CI/CD pipeline, so GitHub Actions should perform the push automatically.
+
+Now check whether you actually changed the workflow:
+
+git status
+
+If you see:
+
+modified: .github/workflows/deploy.yml
+
+then run:
+
+git add .github/workflows/deploy.yml
+git commit -m "Add Docker Hub image push"
+git push origin main
+
+If Git says:
+
+nothing to commit, working tree clean
+
+then these steps were already in your repository. In that case, don't make another commit.
+
+Go to:
+
+GitHub → employee-management-app → Actions
+
+Open the latest Employee Management CI/CD run.
+
+We want:
+
+Checkout Repository    ✅
+Build Docker Image     ✅
+Run Container          ✅
+Wait for Application   ✅
+Health Check           ✅
+Login to Docker Hub    ✅
+Tag Docker Image       ✅
+Push Docker Image      ✅
+
+If Login to Docker Hub still says:
+
+Error: Username and password required
+
+stop there—we need to fix the GitHub repository secrets rather than changing the YAML again.
+
+If everything turns green, the next step is Step 8 — verify jamesaws/employee-management-app:latest on Docker Hub and test pulling it back to Ubuntu.
+
+[🔓JAILBREAK]
+
+Step 7 is the point where the image actually leaves GitHub Actions and goes into your Docker Hub registry.
+
+Add:
+
+      - name: Push Docker Image
+        run: docker push jamesaws/employee-management-app:latest
+
+Then commit/push the workflow if it changed. Once GitHub Actions shows Push Docker Image ✅, your CI pipeline has successfully produced and published a deployable Docker artifact.b     - name: Tag Docker Image
         run: |
           docker tag \
             employee-management-app:latest \
