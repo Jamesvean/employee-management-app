@@ -14,7 +14,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker Image
-        run: docker build -t employee-management-app:latest .
+        run: |
+          docker build \
+            -t employee-management-app:latest \
+            -t jamesaws/employee-management-app:latest \
+            -t jamesaws/employee-management-app:${{ github.sha }} .
 
       - name: Run Container
         run: |
@@ -24,10 +28,19 @@ jobs:
             employee-management-app:latest
 
       - name: Wait for Application
-        run: sleep 10
+        run: |
+          sleep 10
 
       - name: Health Check
-        run: curl -f http://localhost:5000/health
+        run: |
+          curl --fail --retry 5 --retry-delay 3 \
+            http://localhost:5000/health
+
+      - name: Stop Test Container
+        if: always()
+        run: |
+          docker stop employee-management || true
+          docker rm employee-management || true
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -35,34 +48,24 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Tag Docker Image
-        run: |
-          docker tag \
-            employee-management-app:latest \
-            jamesaws/employee-management-app:latest
-
-      - name: Push Docker Image
+      - name: Push Docker Images
         run: |
           docker push jamesaws/employee-management-app:latest
+          docker push jamesaws/employee-management-app:${{ github.sha }}
+
   deploy:
     needs: build-test-push
     runs-on: self-hosted
 
     steps:
       - name: Pull Latest Docker Image
-        run: docker pull jamesaws/employee-management-app:latest
+        run: |
+          docker pull jamesaws/employee-management-app:latest
 
-      - name: Remove Old Container
-        run: docker rm -f employee-management 2>/dev/null || true
-
-            - name: Stop and Remove Old Container
+      - name: Stop and Remove Old Container
         run: |
           docker stop employee-management || true
           docker rm employee-management || true
-
-      - name: Pull Latest Docker Image
-        run: |
-          docker pull jamesaws/employee-management-app:latest
 
       - name: Deploy New Container
         run: |
